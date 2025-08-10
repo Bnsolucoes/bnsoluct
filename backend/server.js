@@ -4,21 +4,22 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { enviarNotificacaoLead, enviarConfirmacaoCliente, initializeTransporter } = require('./emailService');
 
-// Carregar variáveis de ambiente
+// Carrega variáveis de ambiente
 dotenv.config();
 
 const app = express();
 
-// Lista de domínios que podem acessar o backend
+// Domínios permitidos (ajuste para SEU domínio da Vercel!)
 const allowedOrigins = [
-  'http://localhost:3000', // desenvolvimento local
-  'https://site-project-xxxx.vercel.app', // substitua pelo seu domínio real no Vercel
-  'https://bnsoluct.vercel.app' // caso tenha domínio final customizado
+  'http://localhost:3000', // dev local
+  'https://site-project-eight.vercel.app', // domínio real da Vercel
+  // Se quiser, adicione outros domínios futuros aqui
 ];
 
-// Configuração do CORS
+// CORS configurado corretamente
 const corsOptions = {
   origin: function (origin, callback) {
+    // Permite sem origin (ex: ferramentas), ou se está na lista
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -33,20 +34,20 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Array para armazenar leads
+// Simulação de banco de dados de leads
 let leads = [];
 
+// Inicialização do OpenAI
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Inicializar transporter de e-mail
+// Inicializa o transporter para e-mail
 initializeTransporter();
 
-/* -------- ROTAS -------- */
+/* --------- ROTAS --------- */
 
-// Receber lead
+// Recebe lead/formulário
 app.post('/api/leads', async (req, res) => {
   const { nome, email, telefone, empresa, mensagem, origem } = req.body;
-  
   try {
     if (!nome || !email || !mensagem) {
       return res.status(400).json({ 
@@ -115,7 +116,6 @@ app.put('/api/leads/:id', (req, res) => {
   try {
     const { id } = req.params;
     const { status, observacoes } = req.body;
-    
     const leadIndex = leads.findIndex(lead => lead.id === parseInt(id));
     if (leadIndex === -1) {
       return res.status(404).json({ error: 'Lead não encontrado' });
@@ -138,7 +138,6 @@ app.get('/api/dashboard/stats', (req, res) => {
   try {
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    
     const leadsHoje = leads.filter(l => new Date(l.data_criacao).toDateString() === hoje.toDateString()).length;
     const leadsMes = leads.filter(l => new Date(l.data_criacao) >= inicioMes).length;
 
@@ -218,6 +217,6 @@ app.post('/api/roi-calculator', (req, res) => {
   }
 });
 
-// Porta
+// Inicializa servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
