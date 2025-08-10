@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { enviarNotificacaoLead, enviarConfirmacaoCliente, initializeTransporter } = require('./emailService');
 
-// Carregar variáveis de ambiente PRIMEIRO
+// Carregar variáveis de ambiente
 dotenv.config();
 
 const app = express();
@@ -19,10 +19,7 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Aplica o middleware do CORS com as opções definidas
 app.use(cors(corsOptions));
-
-// Middleware para interpretar o corpo das requisições como JSON
 app.use(express.json());
 
 // Array para armazenar leads (simulando banco de dados)
@@ -30,7 +27,7 @@ let leads = [];
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Inicializar transporter de e-mail DEPOIS do dotenv
+// Inicializar transporter de e-mail
 initializeTransporter();
 
 // Endpoint para envio de leads/mensagens do formulário de contato
@@ -38,15 +35,12 @@ app.post('/api/leads', async (req, res) => {
   const { nome, email, telefone, empresa, mensagem, origem } = req.body;
   
   try {
-    // Validação básica
     if (!nome || !email || !mensagem) {
       return res.status(400).json({ 
         error: 'Campos obrigatórios não preenchidos',
         required: ['nome', 'email', 'mensagem']
       });
     }
-
-    // Criar objeto do lead
     const lead = {
       id: Date.now(),
       nome,
@@ -60,10 +54,8 @@ app.post('/api/leads', async (req, res) => {
       data_atualizacao: new Date().toISOString()
     };
 
-    // Adicionar ao array de leads
     leads.push(lead);
 
-    // Log da mensagem recebida
     console.log('🎯 Novo lead recebido:', {
       id: lead.id,
       nome,
@@ -74,7 +66,6 @@ app.post('/api/leads', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    // Enviar e-mails (assíncrono - não bloqueia a resposta)
     Promise.all([
       enviarNotificacaoLead(lead).catch(error => {
         console.log('❌ Erro ao enviar notificação:', error.message);
@@ -89,8 +80,6 @@ app.post('/api/leads', async (req, res) => {
         notificacao: notificacaoEnviada ? '✅ Enviado' : '❌ Erro',
         confirmacao: confirmacaoEnviada ? '✅ Enviado' : '❌ Erro'
       });
-      
-      // Se os e-mails falharam, logar para debug
       if (!notificacaoEnviada || !confirmacaoEnviada) {
         console.log('🔍 Debug - Configurações de e-mail:');
         console.log('  Username:', process.env.SMTP_USERNAME);
@@ -100,7 +89,6 @@ app.post('/api/leads', async (req, res) => {
       console.error('❌ Erro geral ao enviar e-mails:', error.message);
     });
 
-    // Retornar sucesso
     res.status(200).json({ 
       success: true,
       message: 'Mensagem recebida com sucesso! Entraremos em contato em breve.',
@@ -122,7 +110,6 @@ app.get('/api/leads', (req, res) => {
     const leadsOrdenados = leads.sort((a, b) => 
       new Date(b.data_criacao) - new Date(a.data_criacao)
     );
-    
     res.json({
       success: true,
       total: leads.length,
@@ -141,18 +128,15 @@ app.put('/api/leads/:id', (req, res) => {
     const { status, observacoes } = req.body;
     
     const leadIndex = leads.findIndex(lead => lead.id === parseInt(id));
-    
     if (leadIndex === -1) {
       return res.status(404).json({ error: 'Lead não encontrado' });
     }
-    
     leads[leadIndex] = {
       ...leads[leadIndex],
       status: status || leads[leadIndex].status,
       observacoes: observacoes || leads[leadIndex].observacoes,
       data_atualizacao: new Date().toISOString()
     };
-    
     res.json({
       success: true,
       message: 'Lead atualizado com sucesso',
@@ -178,7 +162,7 @@ app.get('/api/dashboard/stats', (req, res) => {
     const leadsMes = leads.filter(lead => 
       new Date(lead.data_criacao) >= inicioMes
     ).length;
-    
+
     const statusCount = leads.reduce((acc, lead) => {
       acc[lead.status] = (acc[lead.status] || 0) + 1;
       return acc;
@@ -188,7 +172,7 @@ app.get('/api/dashboard/stats', (req, res) => {
       acc[lead.origem] = (acc[lead.origem] || 0) + 1;
       return acc;
     }, {});
-    
+
     res.json({
       success: true,
       stats: {
@@ -199,7 +183,7 @@ app.get('/api/dashboard/stats', (req, res) => {
         porOrigem: origemCount
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao gerar estatísticas:', error.message);
     res.status(500).json({ error: 'Erro ao gerar estatísticas' });
@@ -215,18 +199,15 @@ app.post('/api/whatsapp/notify', async (req, res) => {
     if (!lead) {
       return res.status(404).json({ error: 'Lead não encontrado' });
     }
-    
-    // URL do WhatsApp com mensagem personalizada
     const whatsappUrl = `https://wa.me/5511940663895?text=${encodeURIComponent(
-      `Olá! Vi que recebemos um lead de ${lead.nome} (${lead.email} ). ${mensagem || 'Posso ajudar com o atendimento?'}`
+      `Olá! Vi que recebemos um lead de ${lead.nome} (${lead.email}). ${mensagem || 'Posso ajudar com o atendimento?'}`
     )}`;
-    
     res.json({
       success: true,
       whatsapp_url: whatsappUrl,
       message: 'URL do WhatsApp gerada com sucesso'
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao gerar URL do WhatsApp:', error.message);
     res.status(500).json({ error: 'Erro ao gerar URL do WhatsApp' });
@@ -253,29 +234,24 @@ app.post('/chat', async (req, res) => {
 // Endpoint da Calculadora de ROI
 app.post('/api/roi-calculator', async (req, res) => {
   const { faturamento_mensal, margem_lucro, investimento_marketing, plano_escolhido, email } = req.body;
-  
   try {
-    // Lógica de cálculo de ROI
     const faturamento = parseFloat(faturamento_mensal);
     const margem = parseFloat(margem_lucro) / 100;
     const investimento = parseFloat(investimento_marketing);
-    
-    // Multiplicadores baseados no plano
+
     const multiplicadores = {
       'essencial': 1.2,
       'estrategico': 1.5,
       'premium': 2.0
     };
-    
     const multiplicador = multiplicadores[plano_escolhido] || 1.2;
-    
-    // Cálculo do ROI estimado
+
     const lucro_atual = faturamento * margem;
     const aumento_estimado = investimento * multiplicador;
     const novo_faturamento = faturamento + aumento_estimado;
     const novo_lucro = novo_faturamento * margem;
     const roi_estimado = ((novo_lucro - lucro_atual - investimento) / investimento) * 100;
-    
+
     const resultado = {
       roi_estimado: Math.round(roi_estimado),
       aumento_faturamento_estimado: Math.round(aumento_estimado),
@@ -283,28 +259,21 @@ app.post('/api/roi-calculator', async (req, res) => {
       plano_recomendado: plano_escolhido,
       economia_anual: Math.round((novo_lucro - lucro_atual) * 12)
     };
-    
-    // Log para monitoramento
+
     console.log('Cálculo ROI realizado:', {
       plano: plano_escolhido,
       roi: resultado.roi_estimado,
       email: email || 'não informado'
     });
-    
+
     res.json(resultado);
-    
+
   } catch (error) {
     console.error('Erro no cálculo de ROI:', error.message);
     res.status(500).json({ error: `Erro ao calcular ROI: ${error.message}` });
   }
 });
 
+// Este bloco SEMPRE será executado no ambiente Render, garantindo que seu app fique ouvindo normalmente!
 const PORT = process.env.PORT || 3001;
-
-// Para desenvolvimento local
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
-}
-
-// Export para Vercel serverless functions
-module.exports = app;
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
