@@ -4,14 +4,14 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { enviarNotificacaoLead, enviarConfirmacaoCliente, initializeTransporter } = require('./emailService');
 
-// Carregar variáveis de ambiente
 dotenv.config();
 const app = express();
 
 // ===== CORS =====
 const allowedOrigins = [
-  'http://localhost:3000', // desenvolvimento local
-  'https://site-project-eight.vercel.app' // seu domínio real na Vercel
+  'http://localhost:3000',
+  'https://site-project-eight.vercel.app' // seu domínio real no Vercel
+  // adicione qualquer outro domínio Vercel/produção aqui
 ];
 
 const corsOptions = {
@@ -140,13 +140,16 @@ app.post('/api/whatsapp/notify', (req, res) => {
   }
 });
 
-// Chat (aceita /chat e /api/chat)  
+// Chat
 const chatHandler = async (req, res) => {
-  const { prompt } = req.body;
+  const userMessage = req.body.message || req.body.prompt;
+  if (!userMessage) {
+    return res.status(400).json({ error: 'Campo "message" é obrigatório.' });
+  }
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4.1-mini',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: userMessage }],
       max_tokens: 100,
       temperature: 0.7
     });
@@ -155,7 +158,6 @@ const chatHandler = async (req, res) => {
     res.status(500).json({ error: `Erro ao processar a requisição: ${error.message}` });
   }
 };
-app.post('/chat', chatHandler);
 app.post('/api/chat', chatHandler);
 
 // Calculadora ROI
@@ -165,6 +167,9 @@ app.post('/api/roi-calculator', (req, res) => {
     const faturamento = parseFloat(faturamento_mensal);
     const margem = parseFloat(margem_lucro) / 100;
     const investimento = parseFloat(investimento_marketing);
+    if (isNaN(faturamento) || isNaN(margem) || isNaN(investimento)) {
+      return res.status(400).json({ error: 'Valores numéricos inválidos.' });
+    }
     const mult = { 'essencial': 1.2, 'estrategico': 1.5, 'premium': 2.0 }[plano_escolhido] || 1.2;
     const lucro_atual = faturamento * margem;
     const aumento_estimado = investimento * mult;
