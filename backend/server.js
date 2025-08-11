@@ -161,7 +161,7 @@ const chatHandler = async (req, res) => {
 };
 app.post('/api/chat', chatHandler);
 
-// Calculadora ROI - CORRIGIDA
+// Calculadora ROI - VERSÃO APRIMORADA
 app.post('/api/roi-calculator', (req, res) => {
   try {
     const { faturamento_mensal, margem_lucro, investimento_marketing, plano_escolhido } = req.body;
@@ -173,12 +173,16 @@ app.post('/api/roi-calculator', (req, res) => {
       return res.status(400).json({ error: 'Valores numéricos inválidos.' });
     }
 
-    // Percentuais de crescimento mais realistas baseados no faturamento atual
+    // Percentuais de crescimento mais otimistas e realistas
     const crescimento_percent = { 
-      'essencial': 0.25,     // 25% de crescimento do faturamento
-      'estrategico': 0.40,   // 40% de crescimento do faturamento
-      'premium': 0.60        // 60% de crescimento do faturamento
-    }[plano_escolhido] || 0.25;
+      'essencial': 0.35,     // 35% de crescimento do faturamento
+      'estrategico': 0.55,   // 55% de crescimento do faturamento
+      'premium': 0.80        // 80% de crescimento do faturamento
+    }[plano_escolhido] || 0.35;
+
+    // Validação de investimento recomendado
+    const investimento_max_recomendado = faturamento * 0.20; // 20% do faturamento
+    const investimento_min_recomendado = faturamento * 0.05; // 5% do faturamento
 
     const lucro_atual = faturamento * margem;
     const aumento_estimado = faturamento * crescimento_percent; // Baseado no faturamento atual
@@ -188,12 +192,46 @@ app.post('/api/roi-calculator', (req, res) => {
     // ROI = (Ganho - Investimento) / Investimento * 100
     const ganho_liquido = novo_lucro - lucro_atual; // Lucro adicional gerado
     const roi_estimado = ((ganho_liquido - investimento) / investimento) * 100;
-    
-    res.json({
+
+    // Preparar resposta com alertas e recomendações
+    const response = {
       roi_estimado: Math.round(roi_estimado),
       aumento_faturamento_estimado: Math.round(aumento_estimado),
-      novo_faturamento_estimado: Math.round(novo_faturamento)
-    });
+      novo_faturamento_estimado: Math.round(novo_faturamento),
+      ganho_liquido: Math.round(ganho_liquido)
+    };
+
+    // Adicionar alertas baseados no investimento
+    if (investimento > investimento_max_recomendado) {
+      response.alerta = {
+        tipo: 'investimento_alto',
+        mensagem: `Investimento elevado! Para melhor ROI, recomendamos entre R$ ${Math.round(investimento_min_recomendado).toLocaleString('pt-BR')} e R$ ${Math.round(investimento_max_recomendado).toLocaleString('pt-BR')} para este faturamento.`,
+        investimento_recomendado: Math.round(investimento_max_recomendado * 0.75)
+      };
+    } else if (investimento < investimento_min_recomendado) {
+      response.alerta = {
+        tipo: 'investimento_baixo',
+        mensagem: `Com este investimento, os resultados podem ser limitados. Considere investir pelo menos R$ ${Math.round(investimento_min_recomendado).toLocaleString('pt-BR')} para melhores resultados.`,
+        investimento_recomendado: Math.round(investimento_min_recomendado)
+      };
+    }
+
+    // Adicionar status do ROI
+    if (roi_estimado >= 100) {
+      response.status = 'excelente';
+      response.status_mensagem = 'ROI excelente! Investimento muito promissor.';
+    } else if (roi_estimado >= 50) {
+      response.status = 'bom';
+      response.status_mensagem = 'ROI positivo e atrativo.';
+    } else if (roi_estimado >= 0) {
+      response.status = 'moderado';
+      response.status_mensagem = 'ROI positivo, mas pode ser otimizado.';
+    } else {
+      response.status = 'atencao';
+      response.status_mensagem = 'ROI negativo. Recomendamos ajustar o investimento.';
+    }
+    
+    res.json(response);
   } catch (error) {
     res.status(500).json({ error: `Erro ao calcular ROI: ${error.message}` });
   }
