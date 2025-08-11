@@ -161,22 +161,34 @@ const chatHandler = async (req, res) => {
 };
 app.post('/api/chat', chatHandler);
 
-// Calculadora ROI
+// Calculadora ROI - CORRIGIDA
 app.post('/api/roi-calculator', (req, res) => {
   try {
     const { faturamento_mensal, margem_lucro, investimento_marketing, plano_escolhido } = req.body;
     const faturamento = parseFloat(faturamento_mensal);
     const margem = parseFloat(margem_lucro) / 100;
     const investimento = parseFloat(investimento_marketing);
+    
     if (isNaN(faturamento) || isNaN(margem) || isNaN(investimento)) {
       return res.status(400).json({ error: 'Valores numéricos inválidos.' });
     }
-    const mult = { 'essencial': 1.2, 'estrategico': 1.5, 'premium': 2.0 }[plano_escolhido] || 1.2;
+
+    // Percentuais de crescimento mais realistas baseados no faturamento atual
+    const crescimento_percent = { 
+      'essencial': 0.25,     // 25% de crescimento do faturamento
+      'estrategico': 0.40,   // 40% de crescimento do faturamento
+      'premium': 0.60        // 60% de crescimento do faturamento
+    }[plano_escolhido] || 0.25;
+
     const lucro_atual = faturamento * margem;
-    const aumento_estimado = investimento * mult;
+    const aumento_estimado = faturamento * crescimento_percent; // Baseado no faturamento atual
     const novo_faturamento = faturamento + aumento_estimado;
     const novo_lucro = novo_faturamento * margem;
-    const roi_estimado = ((novo_lucro - lucro_atual - investimento) / investimento) * 100;
+    
+    // ROI = (Ganho - Investimento) / Investimento * 100
+    const ganho_liquido = novo_lucro - lucro_atual; // Lucro adicional gerado
+    const roi_estimado = ((ganho_liquido - investimento) / investimento) * 100;
+    
     res.json({
       roi_estimado: Math.round(roi_estimado),
       aumento_faturamento_estimado: Math.round(aumento_estimado),
