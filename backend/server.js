@@ -7,16 +7,17 @@ const { enviarNotificacaoLead, enviarConfirmacaoCliente, initializeTransporter }
 dotenv.config();
 const app = express();
 
-// ===== CORS =====
+// ===== CORS CORRIGIDO =====
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://site-project-eight.vercel.app' // seu domínio real no Vercel
-  // adicione qualquer outro domínio Vercel/produção aqui
+  'https://site-project-eight.vercel.app' // seu domínio principal
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Permite sem origin (chamadas do servidor), domínios autorizados, ou qualquer subdomínio .vercel.app
+    if (!origin || allowedOrigins.includes(origin) || 
+        (origin && origin.includes('.vercel.app'))) {
       callback(null, true);
     } else {
       callback(new Error(`Não permitido pelo CORS: ${origin}`));
@@ -148,7 +149,7 @@ const chatHandler = async (req, res) => {
   }
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: userMessage }],
       max_tokens: 100,
       temperature: 0.7
