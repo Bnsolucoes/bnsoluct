@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { enviarNotificacaoLead, enviarConfirmacaoCliente, initializeTransporter } = require('./emailService');
 
-// Carregar variáveis
+// Carregar variáveis de ambiente
 dotenv.config();
 const app = express();
 
@@ -73,7 +73,7 @@ app.post('/api/leads', async (req, res) => {
       message: 'Mensagem recebida com sucesso!',
       lead_id: lead.id
     });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -140,7 +140,7 @@ app.post('/api/whatsapp/notify', (req, res) => {
   }
 });
 
-// Chat - handler único para /chat e /api/chat
+// Chat (aceita /chat e /api/chat)  
 const chatHandler = async (req, res) => {
   const { prompt } = req.body;
   try {
@@ -158,7 +158,7 @@ const chatHandler = async (req, res) => {
 app.post('/chat', chatHandler);
 app.post('/api/chat', chatHandler);
 
-// ROI Calculator
+// Calculadora ROI
 app.post('/api/roi-calculator', (req, res) => {
   try {
     const { faturamento_mensal, margem_lucro, investimento_marketing, plano_escolhido } = req.body;
@@ -181,6 +181,6 @@ app.post('/api/roi-calculator', (req, res) => {
   }
 });
 
-// Porta
+// Início do servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
